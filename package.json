@@ -1,0 +1,36 @@
+{
+  "name": "context-hooks",
+  "version": "0.0.0",
+  "description": "React Hooks for accessing state and dispatch from a store",
+  "homepage": "https://github.com/pavelivanov/context-hooks#readme",
+  "author": "Pavel Ivanov <grammka@gmail.com> (https://github.com/pavelivanov)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pavelivanov/context-hooks.git"
+  },
+  "keywords": [
+    "react",
+    "hooks",
+    "context",
+    "store",
+    "action",
+    "actions",
+    "reducer",
+    "dispatch",
+    "redux"
+  ],
+  "main": "./lib",
+  "scripts": {
+    "prepublish": "npm run build",
+    "clean": "rimraf ./lib",
+    "dev": "babel -w ./src --out-dir ./lib",
+    "build": "npm run clean && babel ./src --out-dir ./lib"
+  },
+  "peerDependencies": {
+    "react": "^16.8"
+  },
+  "devDependencies": {
+    "rimraf": "^2.6.3"
+  }
+}
