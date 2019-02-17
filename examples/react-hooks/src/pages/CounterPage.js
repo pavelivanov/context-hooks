@@ -3,14 +3,13 @@ import { useReducers, useConnect } from '../store/lib'
 import { counter } from '../store/reducers'
 
 
-const useData = () => useConnect({
-  count: 'counter.count',
-})
-
 const CounterPage = () => {
   console.log('Start render CounterPage')
 
-  const { count } = useData()
+  const { count } = useConnect({
+    count: 'counter.count',
+  })
+
   const reducers = useReducers({ counter })
 
   return (

@@ -17,7 +17,10 @@ class Store {
 
   constructor(initialState) {
     this.state = initialState || {}
-    this.listeners = {} // pathToState => handler[]
+    this.listeners = {
+      root: [],
+      // ...reducerName: [ ...handlers ]
+    }
   }
 
   getState() {
@@ -55,11 +58,15 @@ class Store {
       [reducerName]: newState,
     }
 
-    Object.keys(this.listeners).forEach((reducer) => {
-      const handlers = this.listeners[reducer]
+    this.listeners['root'].forEach((handler) => {
+      handler(this.state)
+    })
+
+    Object.keys(this.listeners).forEach((_reducerName) => {
+      const handlers = this.listeners[_reducerName]
 
       handlers.forEach((handler) => {
-        if (reducerName === reducer) {
+        if (reducerName === _reducerName) {
           handler(newState)
         }
       })
@@ -145,46 +152,69 @@ const mapStateToProps = (state, storeProps) => {
   return resolveMapStateToProps(state, storeProps)
 }
 
+
+const getUniqueId = ((id) => () => String(++id))(1)
+const ductapeRenderId = {}
+
 const useConnect = (storeProps) => {
   const { getState, subscribe, unsubscribe } = useContext(EventsContext)
-  const [ _id, _setState ] = useState(0)
+  const [ connectId ] = useState(getUniqueId())
+  const [ renderId, setRenderId ] = useState(0)
+
+  ductapeRenderId[connectId] = () => setRenderId(renderId + 1)
 
   const initialState = getState()
-
-  const state = mapStateToProps(initialState, storeProps)
 
   useEffect(() => {
     const listeners = {}
 
-    Object.keys(storeProps).forEach((propName) => {
-      const pathToState = storeProps[propName]
-      const [ reducerName, ...path ] = pathToState.split('.')
+    if (typeof storeProps === 'function') {
+      let prevValue = mapStateToProps(initialState, storeProps)
 
-      let prevValue = getIn(initialState[reducerName], path)
+      listeners['root'] = (newState) => {
+        const newValue = mapStateToProps(newState, storeProps)
 
-      listeners[reducerName] = (newState) => {
-        const value = getIn(newState, path)
-
-        if (prevValue !== value) {
-          _setState(_id + 1)
+        // TODO replace this with memo
+        if (JSON.stringify(prevValue) !== JSON.stringify(newValue)) {
+          ductapeRenderId[connectId]()
         }
 
-        prevValue = value
+        prevValue = newValue
       }
-    })
+    }
+    else {
+      Object.keys(storeProps).forEach((propName) => {
+        const pathToState = storeProps[propName]
+        const [ reducerName, ...path ] = pathToState.split('.')
+
+        let prevValue = getIn(initialState[reducerName], path)
+
+        listeners[reducerName] = (newState) => {
+          const newValue = getIn(newState, path)
+
+          if (prevValue !== newValue) {
+            ductapeRenderId[connectId]()
+          }
+
+          prevValue = newValue
+        }
+      })
+    }
 
     Object.keys(listeners).forEach((reducerName) => {
       subscribe(reducerName, listeners[reducerName])
     })
 
     return () => {
+      delete ductapeRenderId[connectId]
+
       Object.keys(listeners).forEach((reducerName) => {
         unsubscribe(reducerName, listeners[reducerName])
       })
     }
-  })
+  }, [])
 
-  return state
+  return mapStateToProps(initialState, storeProps)
 }
 
 
