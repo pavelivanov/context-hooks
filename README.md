@@ -7,7 +7,7 @@ React Hooks for accessing state and dispatch from a store
 
 #### Counter
 
-```
+```jsx
 import { StoreContext, EventsContext, createStore, useReducers, useConntect } from 'context-hooks'
 
 const counter = {
