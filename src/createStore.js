@@ -60,8 +60,21 @@ class Store {
 }
 
 
-const createStore = (initialState) => {
-  const store = new Store(initialState)
+const getInitialStateFromReducers = (reducers) =>
+  Object.keys(reducers).reduce((state, reducerName) => {
+    const { initialState } = reducers[reducerName]
+
+    if (!initialState) {
+      throw new Error(`"initialState" required in "${reducerName}" reducer.`)
+    }
+
+    return { ...state, [reducerName]: initialState }
+  }, {})
+
+const createStore = (reducers, initialState = {}) => {
+  const initialStateFromReducers = getInitialStateFromReducers(reducers)
+
+  const store = new Store({ ...initialStateFromReducers, ...initialState })
 
   const events = {
     getState: store.getState.bind(store),
