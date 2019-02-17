@@ -1,6 +1,6 @@
 import React from 'react'
-import { useReducers, useConnect } from '../store/lib'
-import { counter } from '../store/reducers'
+import { useReducers, useConnect } from 'context-hooks'
+import { counter } from '../reducers'
 
 
 const CounterPage = () => {

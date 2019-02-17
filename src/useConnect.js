@@ -1,104 +1,5 @@
-import React, { useState, useEffect, useReducer, useContext } from 'react'
-
-
-const StoreContext = React.createContext({
-  store: {},
-})
-
-const EventsContext = React.createContext({
-  getState: () => {},
-  subscribe: () => {},
-  unsubscribe: () => {},
-  dispatch: () => {},
-})
-
-
-class Store {
-
-  constructor(initialState) {
-    this.state = initialState || {}
-    this.listeners = {
-      root: [],
-      // ...reducerName: [ ...handlers ]
-    }
-  }
-
-  getState() {
-    return this.state
-  }
-
-  has(reducerName, handler) {
-    return this.listeners[reducerName] && this.listeners[reducerName].includes(handler)
-  }
-
-  subscribe(reducerName, handler) {
-    if (!this.listeners[reducerName]) {
-      this.listeners[reducerName] = []
-    }
-
-    if (!this.has(reducerName, handler)) {
-      this.listeners[reducerName].push(handler)
-    }
-  }
-
-  unsubscribe(reducerName, handler) {
-    if (this.has(reducerName, handler)) {
-      const handlerIndex = this.listeners[reducerName].indexOf(handler)
-
-      this.listeners[reducerName].splice(handlerIndex, 1)
-    }
-  }
-
-  dispatch({ reducerName, method }) {
-    const currState = this.state[reducerName]
-    const newState  = method(currState)
-
-    this.state = {
-      ...this.state,
-      [reducerName]: newState,
-    }
-
-    this.listeners['root'].forEach((handler) => {
-      handler(this.state)
-    })
-
-    Object.keys(this.listeners).forEach((_reducerName) => {
-      const handlers = this.listeners[_reducerName]
-
-      handlers.forEach((handler) => {
-        if (reducerName === _reducerName) {
-          handler(newState)
-        }
-      })
-    })
-  }
-}
-
-
-const createStore = (initialState) => {
-  return new Store(initialState)
-}
-
-
-const useReducers = (reducers) => {
-  const { dispatch } = useContext(EventsContext)
-
-  return Object.keys(reducers).reduce((acc, reducerName) => ({
-    ...acc,
-    [reducerName]: (
-      Object.keys(reducers[reducerName])
-        .filter((methodName) => methodName !== 'initialState')
-        .reduce((acc, methodName) => ({
-          ...acc,
-          [methodName]: (payload) => {
-            const method = (state) => reducers[reducerName][methodName](state, payload)
-
-            dispatch({ reducerName, method })
-          },
-        }), {})
-    ),
-  }), {})
-}
+import React, { useState, useContext, useEffect } from 'react'
+import EventsContext from './EventsContext'
 
 
 const getIn = (obj, arrPath) => {
@@ -157,7 +58,7 @@ const getUniqueId = ((id) => () => String(++id))(1)
 const ductapeRenderId = {}
 
 const useConnect = (storeProps) => {
-  const { getState, subscribe, unsubscribe } = useContext(EventsContext)
+  const { getState, subscribe, unsubscribe } = useContext(EventsContext).events
   const [ connectId ] = useState(getUniqueId())
   const [ renderId, setRenderId ] = useState(0)
 
@@ -218,11 +119,4 @@ const useConnect = (storeProps) => {
 }
 
 
-export {
-  StoreContext,
-  EventsContext,
-  createStore,
-  useReducers,
-  useConnect,
-}
-
+export default useConnect

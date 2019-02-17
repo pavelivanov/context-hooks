@@ -1,6 +1,6 @@
 import React, { Fragment } from 'react'
 import { Route, Link } from 'react-router-dom'
-import { useConnect } from './store/lib'
+import { useConnect } from 'context-hooks'
 
 import CounterPage from './pages/CounterPage'
 import ProductsPage from './pages/ProductsPage'
