@@ -8,7 +8,7 @@ React Hooks for accessing state and dispatch from a store
 #### Counter
 
 ```jsx
-import { StoreContext, EventsContext, createStore, useReducers, useConntect } from 'context-hooks'
+import { StoreContext, createStore, useReducers, useConntect } from 'context-hooks'
 
 const counter = {
     initialState: {
@@ -39,10 +39,8 @@ const reducers = { counter }
 const store = createStore(reducers)
 
 const Root = () => (
-    <StoreContext.Provider value={{ store }}>
-        <EventsContext.Provider value={{ events }}>
-            <App />
-        </EventsContext.Provider>
+    <StoreContext.Provider value={store}>
+        <App />
     </StoreContext.Provider>
 )
 ```

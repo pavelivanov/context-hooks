@@ -1,11 +1,11 @@
 import React, { useContext } from 'react'
 
-import EventsContext from './EventsContext'
+import StoreContext from './StoreContext'
 import devTools from './devTools'
 
 
 const useReducers = (reducers) => {
-  const { dispatch } = useContext(EventsContext).events
+  const store = useContext(StoreContext)
 
   return Object.keys(reducers).reduce((acc, reducerName) => ({
     ...acc,
@@ -15,10 +15,10 @@ const useReducers = (reducers) => {
         .reduce((acc, methodName) => ({
           ...acc,
           [methodName]: (payload) => {
-            const method = (state) => reducers[reducerName][methodName](state, payload)
+            const type = `${reducerName}.${methodName}`
 
-            devTools.dispatch({ type: `${reducerName}.${methodName}`, payload })
-            dispatch({ reducerName, method })
+            store.dispatch({ type, payload })
+            devTools.dispatch({ type, payload })
           },
         }), {})
     ),

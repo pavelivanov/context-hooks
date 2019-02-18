@@ -21,7 +21,7 @@ const createStore = (reducers, initialState) => {
   }
 }
 
-const dispatch = store.dispatch
+const dispatch = (...args) => store.dispatch(...args)
 
 
 export default {

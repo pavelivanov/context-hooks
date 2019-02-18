@@ -1,121 +1,138 @@
 import React, { useState, useContext, useEffect } from 'react'
-import EventsContext from './EventsContext'
+import StoreContext from './StoreContext'
 
 
 const getIn = (obj, arrPath) => {
   const [ key, ...restPath ] = arrPath
 
-  if (restPath) {
+  if (!restPath.length) {
     return obj[key]
   }
 
   return getIn(obj[key], restPath)
 }
 
-const resolveStoreProps = (state, path) => {
-  const paths = path.split('.')
-  let current = state
-  let i
-
-  for (i = 0; i < paths.length; ++i) {
-    if (current[paths[i]] === undefined) {
-      return undefined
-    }
-    current = current[paths[i]]
+const lookup = (state, propMap) => {
+  if (typeof propMap === 'function') {
+    return propMap(state)
   }
 
-  return current
-}
-
-const lookup = (state, keyValue) => {
-  if (typeof keyValue === 'function') return keyValue(state)
-  if (typeof keyValue === 'string') return resolveStoreProps(state, keyValue)
-  throw new Error(`Unknown lookup value: ${keyValue}`)
-}
-
-const resolveMapStateToProps = (state, storeProps) => {
-  const resolved = {}
-
-  for (let key in storeProps) {
-    if (storeProps.hasOwnProperty(key)) {
-      resolved[key] = lookup(state, storeProps[key])
-    }
+  if (typeof propMap === 'string') {
+    return getIn(state, propMap.split('.'))
   }
 
-  return resolved
+  throw new Error(`Unknown lookup value: ${propMap}`)
 }
 
-const mapStateToProps = (state, storeProps) => {
-  if (typeof storeProps === 'function') {
-    return storeProps(state)
+const mapStateToProps = (state, propsMap) => {
+  if (typeof propsMap === 'function') {
+    return propsMap(state)
   }
 
-  return resolveMapStateToProps(state, storeProps)
+  return Object.keys(propsMap).reduce((res, propName) => ({
+    ...res,
+    [propName]: lookup(state, propsMap[propName]),
+  }), {})
 }
 
 
 const getUniqueId = ((id) => () => String(++id))(1)
-const ductapeRenderId = {}
+const renderConnectors = {}
 
-const useConnect = (storeProps) => {
-  const { getState, subscribe, unsubscribe } = useContext(EventsContext).events
+/**
+ *
+ * @param {Object} initialState
+ * @param {Function|string} propsMap
+ * @returns {function(*=)}
+ */
+const createListener = (initialState, propsMap) => {
+  let prevValue = lookup(initialState, propsMap)
+
+  return (newState) => {
+    const newValue  = lookup(newState, propsMap)
+    const isEqual   = JSON.stringify(prevValue) === JSON.stringify(newValue) // TODO replace this with memo
+
+    prevValue = newValue
+
+    return !isEqual
+  }
+}
+
+const createListeners = (store, propsMap) => {
+  const initialState = store.getState()
+  const listeners = { root: [] }
+
+  if (typeof propsMap === 'function') {
+    listeners.root.push(createListener(initialState, propsMap))
+  }
+  else {
+    Object.keys(propsMap).forEach((propName) => {
+      const propMap   = propsMap[propName]
+
+      if (typeof propMap === 'function' || typeof propMap === 'string') {
+        listeners.root.push(createListener(initialState, propMap))
+      }
+      else if (typeof propMap === 'string') {
+        const [ reducerName, ...path ] = propMap.split('.')
+
+        listeners[reducerName] = createListener(initialState[reducerName], path.join('.'))
+      }
+      else {
+        throw new Error(`Invalid prop "${propName}" of type "${typeof propMap}" supplied to "useConnect", expected "string" or "function".`)
+      }
+    })
+  }
+
+  return listeners
+}
+
+const useListeners = (store, propsMap) => {
   const [ connectId ] = useState(getUniqueId())
   const [ renderId, setRenderId ] = useState(0)
 
-  ductapeRenderId[connectId] = () => setRenderId(renderId + 1)
-
-  const initialState = getState()
+  // update state setter on each render to allow listeners has access to the last created scope
+  renderConnectors[connectId] = () => setRenderId(renderId + 1)
 
   useEffect(() => {
-    const listeners = {}
+    const { root: rootListeners, ...reducerListeners } = createListeners(store, propsMap, connectId)
 
-    if (typeof storeProps === 'function') {
-      let prevValue = mapStateToProps(initialState, storeProps)
+    const rootHandler = (newState) => {
+      const isChanged = rootListeners.some((handler) => handler(newState))
 
-      listeners['root'] = (newState) => {
-        const newValue = mapStateToProps(newState, storeProps)
-
-        // TODO replace this with memo
-        if (JSON.stringify(prevValue) !== JSON.stringify(newValue)) {
-          ductapeRenderId[connectId]()
-        }
-
-        prevValue = newValue
+      if (isChanged) {
+        renderConnectors[connectId]()
       }
     }
-    else {
-      Object.keys(storeProps).forEach((propName) => {
-        const pathToState = storeProps[propName]
-        const [ reducerName, ...path ] = pathToState.split('.')
 
-        let prevValue = getIn(initialState[reducerName], path)
-
-        listeners[reducerName] = (newState) => {
-          const newValue = getIn(newState, path)
-
-          if (prevValue !== newValue) {
-            ductapeRenderId[connectId]()
-          }
-
-          prevValue = newValue
-        }
-      })
+    if (rootListeners.length) {
+      store.subscribe('root', rootHandler)
     }
 
-    Object.keys(listeners).forEach((reducerName) => {
-      subscribe(reducerName, listeners[reducerName])
+    Object.keys(reducerListeners).forEach((reducerName) => {
+      store.subscribe(reducerName, reducerListeners[key])
     })
 
     return () => {
-      delete ductapeRenderId[connectId]
+      delete renderConnectors[connectId]
 
-      Object.keys(listeners).forEach((reducerName) => {
-        unsubscribe(reducerName, listeners[reducerName])
+      if (rootListeners.length) {
+        store.unsubscribe('root', rootHandler)
+      }
+
+      Object.keys(reducerListeners).forEach((reducerName) => {
+        store.unsubscribe(reducerName, reducerListeners[key])
       })
     }
   }, [])
+}
 
-  return mapStateToProps(initialState, storeProps)
+const useConnect = (propsMap) => {
+  const store = useContext(StoreContext)
+
+  useListeners(store, propsMap)
+
+  // TODO looks like there is a problem with correct store state on rerender
+  return mapStateToProps(store.getState(), propsMap)
 }
 
 

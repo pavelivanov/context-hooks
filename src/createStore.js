@@ -3,12 +3,10 @@ import devTools from './devTools'
 
 class Store {
 
-  constructor(initialState) {
-    this.state = initialState || {}
-    this.listeners = {
-      root: [],
-      // ...reducerName: [ ...handlers ]
-    }
+  constructor(reducers, initialState) {
+    this.state      = initialState || {}
+    this.reducers   = reducers
+    this.listeners  = { root: [] /* , [reducerName]: [ ...handlers ] */ }
   }
 
   getState() {
@@ -37,33 +35,41 @@ class Store {
     }
   }
 
-  dispatch({ reducerName, method }) {
+  /**
+   *
+   * @param {Object} values
+   * @param {string} values.type
+   * @param {Function} values.payload
+   */
+  dispatch({ type, payload }) {
+    const [ reducerName, methodName ] = type.split('.')
+
     const currState = this.state[reducerName]
-    const newState  = method(currState)
+    const nextState = this.reducers[reducerName][methodName](currState, payload)
 
     this.state = {
       ...this.state,
-      [reducerName]: newState,
+      [reducerName]: nextState,
     }
 
+    // call all handlers that was created from {Function} mapStateToProps
     this.listeners['root'].forEach((handler) => {
       handler(this.state)
     })
 
-    Object.keys(this.listeners).forEach((_reducerName) => {
-      const handlers = this.listeners[_reducerName]
-
-      handlers.forEach((handler) => {
-        if (reducerName === _reducerName) {
-          handler(newState)
-        }
+    if (this.listeners[reducerName]) {
+      this.listeners[reducerName].forEach((handler) => {
+        handler(nextState)
       })
-    })
+    }
   }
 }
 
-
-const getInitialStateFromReducers = (reducers) =>
+/**
+ *
+ * @param {Object} reducers
+ */
+const collectInitialStateFromReducers = (reducers) =>
   Object.keys(reducers).reduce((state, reducerName) => {
     const { initialState } = reducers[reducerName]
 
@@ -74,22 +80,21 @@ const getInitialStateFromReducers = (reducers) =>
     return { ...state, [reducerName]: initialState }
   }, {})
 
+/**
+ *
+ * @param {Object} reducers
+ * @param {Object} [initialState]
+ * @returns {Store}
+ */
 const createStore = (reducers, initialState = {}) => {
-  const initialStateFromReducers = getInitialStateFromReducers(reducers)
-  const _initialState = { ...initialStateFromReducers, ...initialState }
+  const _initialState = {
+    ...collectInitialStateFromReducers(reducers),
+    ...initialState
+  }
 
   devTools.createStore(reducers, _initialState)
 
-  const store = new Store(_initialState)
-
-  const events = {
-    getState: store.getState.bind(store),
-    subscribe: store.subscribe.bind(store),
-    unsubscribe: store.unsubscribe.bind(store),
-    dispatch: store.dispatch.bind(store)
-  }
-
-  return { store, events }
+  return new Store(reducers, _initialState)
 }
 
 

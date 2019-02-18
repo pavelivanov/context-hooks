@@ -2,7 +2,10 @@ import React from 'react'
 
 
 const StoreContext = React.createContext({
-  store: {},
+  getState: () => {},
+  subscribe: () => {},
+  unsubscribe: () => {},
+  dispatch: () => {},
 })
 
 
