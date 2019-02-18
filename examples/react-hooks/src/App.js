@@ -4,20 +4,17 @@ import { useConnect } from 'context-hooks'
 
 import CounterPage from './pages/CounterPage'
 import ProductsPage from './pages/ProductsPage'
+import SideComponent from './SideComponent'
 
 
 const App = () => {
-  console.log('Start render App')
-
-  const { count } = useConnect((state) => ({
-    count: state.counter.count,
-  }))
+  console.log('render App')
 
   return (
     <Fragment>
       <ul>
         <li>
-          <Link to="/counter">Counter {count}</Link>
+          <Link to="/counter">Counter</Link>
         </li>
         <li>
           <Link to="/products">Products</Link>
@@ -25,6 +22,8 @@ const App = () => {
       </ul>
 
       <hr />
+
+      <SideComponent />
 
       <Route exact path="/" component={CounterPage} />
       <Route exact path="/counter" component={CounterPage} />

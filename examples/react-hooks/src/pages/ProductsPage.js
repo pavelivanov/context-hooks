@@ -2,6 +2,7 @@ import React from 'react'
 
 
 const ProductsPage = () => {
+  console.log('render ProductsPage')
 
   return (
     <div>

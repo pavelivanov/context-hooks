@@ -3,7 +3,7 @@ import { useReducers, useConnect } from 'context-hooks'
 
 
 const CounterPage = () => {
-  console.log('Start render CounterPage')
+  console.log('render CounterPage')
 
   const { count } = useConnect({
     count: 'counter.count',
