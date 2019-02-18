@@ -1,12 +1,31 @@
 import devTools from './devTools'
 
 
+const dispatchReducers = (store, reducers) =>
+  Object.keys(reducers).reduce((acc, reducerName) => ({
+    ...acc,
+    [reducerName]: (
+      Object.keys(reducers[reducerName])
+        .filter((methodName) => methodName !== 'initialState')
+        .reduce((acc, methodName) => ({
+          ...acc,
+          [methodName]: (payload) => {
+            const type = `${reducerName}.${methodName}`
+
+            store.dispatch({ type, payload })
+            devTools.dispatch({ type, payload })
+          },
+        }), {})
+    ),
+  }), {})
+
 class Store {
 
   constructor(reducers, initialState) {
-    this.state      = initialState || {}
-    this.reducers   = reducers
-    this.listeners  = { root: [] /* , [reducerName]: [ ...handlers ] */ }
+    this.state                = initialState || {}
+    this.reducers             = reducers
+    this.listeners            = { root: [] /* , [reducerName]: [ ...handlers ] */ }
+    this.dispatchedReducers   = dispatchReducers(this, reducers)
   }
 
   getState() {

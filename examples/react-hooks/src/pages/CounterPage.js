@@ -1,6 +1,5 @@
 import React from 'react'
 import { useReducers, useConnect } from 'context-hooks'
-import { counter } from '../reducers'
 
 
 const CounterPage = () => {
@@ -10,13 +9,13 @@ const CounterPage = () => {
     count: 'counter.count',
   })
 
-  const reducers = useReducers({ counter })
+  const { counter } = useReducers()
 
   return (
     <div>
       Count: {count}<br /><br />
-      <button onClick={() => reducers.counter.increment()}>increment</button><br />
-      <button onClick={() => reducers.counter.decrement()}>decrement</button>
+      <button onClick={() => counter.increment()}>increment</button><br />
+      <button onClick={() => counter.decrement()}>decrement</button>
     </div>
   )
 }
