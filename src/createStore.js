@@ -1,3 +1,6 @@
+import devTools from './devTools'
+
+
 class Store {
 
   constructor(initialState) {
@@ -73,8 +76,11 @@ const getInitialStateFromReducers = (reducers) =>
 
 const createStore = (reducers, initialState = {}) => {
   const initialStateFromReducers = getInitialStateFromReducers(reducers)
+  const _initialState = { ...initialStateFromReducers, ...initialState }
 
-  const store = new Store({ ...initialStateFromReducers, ...initialState })
+  devTools.createStore(reducers, _initialState)
+
+  const store = new Store(_initialState)
 
   const events = {
     getState: store.getState.bind(store),

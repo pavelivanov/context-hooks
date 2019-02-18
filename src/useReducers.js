@@ -1,5 +1,7 @@
 import React, { useContext } from 'react'
+
 import EventsContext from './EventsContext'
+import devTools from './devTools'
 
 
 const useReducers = (reducers) => {
@@ -15,6 +17,7 @@ const useReducers = (reducers) => {
           [methodName]: (payload) => {
             const method = (state) => reducers[reducerName][methodName](state, payload)
 
+            devTools.dispatch({ type: `${reducerName}.${methodName}`, payload })
             dispatch({ reducerName, method })
           },
         }), {})

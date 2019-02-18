@@ -4,6 +4,9 @@ import createStore from './createStore'
 import useReducers from './useReducers'
 import useConnect from './useConnect'
 
+import { compose, applyMiddleware } from './util'
+
+
 
 export {
   StoreContext,
@@ -11,4 +14,7 @@ export {
   createStore,
   useReducers,
   useConnect,
+
+  compose,
+  applyMiddleware,
 }

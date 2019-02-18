@@ -24,7 +24,7 @@
   "scripts": {
     "prepublish": "npm run build",
     "clean": "rimraf ./lib",
-    "dev": "npm run clean && babel ./src --out-dir ./lib --watch",
+    "dev": "npm run clean && babel ./src --out-dir ./examples/react-hooks/node_modules/context-hooks --watch",
     "build": "npm run clean && babel ./src --out-dir ./lib"
   },
   "peerDependencies": {
