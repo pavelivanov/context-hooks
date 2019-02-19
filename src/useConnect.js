@@ -109,7 +109,7 @@ const useListeners = (store, propsMap) => {
     }
 
     Object.keys(reducerListeners).forEach((reducerName) => {
-      store.subscribe(reducerName, reducerListeners[key])
+      store.subscribe(reducerName, reducerListeners[reducerName])
     })
 
     return () => {
@@ -120,7 +120,7 @@ const useListeners = (store, propsMap) => {
       }
 
       Object.keys(reducerListeners).forEach((reducerName) => {
-        store.unsubscribe(reducerName, reducerListeners[key])
+        store.unsubscribe(reducerName, reducerListeners[reducerName])
       })
     }
   }, [])
