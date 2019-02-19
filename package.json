@@ -1,6 +1,6 @@
 {
   "name": "context-hooks",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "React Hooks for accessing state and dispatch from a store",
   "homepage": "https://github.com/pavelivanov/context-hooks#readme",
   "author": "Pavel Ivanov <grammka@gmail.com> (https://github.com/pavelivanov)",

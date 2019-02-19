@@ -94,33 +94,40 @@ const useListeners = (store, propsMap) => {
   renderConnectors[connectId] = () => setRenderId(renderId + 1)
 
   useEffect(() => {
-    const { root: rootListeners, ...reducerListeners } = createListeners(store, propsMap, connectId)
-
-    const rootHandler = (newState) => {
-      const isChanged = rootListeners.some((handler) => handler(newState))
-
-      if (isChanged) {
-        renderConnectors[connectId]()
-      }
-    }
+    const { root: rootListeners, ...reducerListeners } = createListeners(store, propsMap)
+    const handlers = []
 
     if (rootListeners.length) {
-      store.subscribe('root', rootHandler)
+      const handler = (newState) => {
+        const isChanged = rootListeners.some((handler) => handler(newState))
+
+        if (isChanged) {
+          renderConnectors[connectId]()
+        }
+      }
+
+      handlers.push({ key: 'root', handler })
+      store.subscribe('root', handler)
     }
 
     Object.keys(reducerListeners).forEach((reducerName) => {
-      store.subscribe(reducerName, reducerListeners[reducerName])
+      const handler = (newState) => {
+        const isChanged = reducerListeners[reducerName](newState)
+
+        if (isChanged) {
+          renderConnectors[connectId]()
+        }
+      }
+
+      handlers.push({ key: reducerName, handler })
+      store.subscribe(reducerName, handler)
     })
 
     return () => {
       delete renderConnectors[connectId]
 
-      if (rootListeners.length) {
-        store.unsubscribe('root', rootHandler)
-      }
-
-      Object.keys(reducerListeners).forEach((reducerName) => {
-        store.unsubscribe(reducerName, reducerListeners[reducerName])
+      handlers.forEach(({ key, handler }) => {
+        store.unsubscribe(key, handler)
       })
     }
   }, [])
