@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect } from 'react'
+import React, { useState, useContext, useEffect, useReducer, useRef } from 'react'
 import StoreContext from './StoreContext'
 
 
@@ -36,9 +36,6 @@ const mapStateToProps = (state, propsMap) => {
 }
 
 
-const getUniqueId = ((id) => () => String(++id))(1)
-const renderConnectors = {}
-
 /**
  *
  * @param {Object} initialState
@@ -62,74 +59,82 @@ const createListeners = (store, propsMap) => {
   const initialState = store.getState()
   const listeners = { root: [] }
 
-  if (typeof propsMap === 'function') {
-    listeners.root.push(createListener(initialState, propsMap))
-  }
-  else {
-    Object.keys(propsMap).forEach((propName) => {
-      const propMap   = propsMap[propName]
+  Object.keys(propsMap).forEach((propName) => {
+    const propMap = propsMap[propName]
 
-      if (typeof propMap === 'function' || typeof propMap === 'string') {
-        listeners.root.push(createListener(initialState, propMap))
-      }
-      else if (typeof propMap === 'string') {
-        const [ reducerName, ...path ] = propMap.split('.')
+    if (typeof propMap === 'function') {
+      listeners.root.push(createListener(initialState, propMap))
+    }
+    else if (typeof propMap === 'string') {
+      const [ reducerName, ...path ] = propMap.split('.')
 
-        listeners[reducerName] = createListener(initialState[reducerName], path.join('.'))
+      if (!listeners[reducerName]) {
+        listeners[reducerName] = []
       }
-      else {
-        throw new Error(`Invalid prop "${propName}" of type "${typeof propMap}" supplied to "useConnect", expected "string" or "function".`)
-      }
-    })
-  }
+
+      const listener = createListener(initialState[reducerName], path.join('.'))
+
+      listeners[reducerName].push(listener)
+    }
+    else {
+      throw new Error(`Invalid prop "${propName}" of type "${typeof propMap}" supplied to "useConnect", expected "string" or "function".`)
+    }
+  })
 
   return listeners
 }
 
+const createChangeHandler = (ref, listener) => (newState) => {
+  const isChanged = listener(newState)
+
+  if (isChanged) {
+    ref.current.forceUpdate()
+  }
+}
+
+const useForceUpdate = () => useReducer((state) => !state, false)[1]
+
 const useListeners = (store, propsMap) => {
-  const [ connectId ] = useState(getUniqueId())
-  const [ renderId, setRenderId ] = useState(0)
+  const ref           = useRef()
+  const isFirstRender = !ref.current
+  const forceUpdate   = useForceUpdate()
+
+  if (isFirstRender) {
+    ref.current = {
+      forceUpdate: () => {},
+      handlers: [],
+    }
+  }
 
   // update state setter on each render to allow listeners has access to the last created scope
-  renderConnectors[connectId] = () => setRenderId(renderId + 1)
+  ref.current.forceUpdate = () => forceUpdate()
 
-  useEffect(() => {
-    const { root: rootListeners, ...reducerListeners } = createListeners(store, propsMap)
-    const handlers = []
+  if (isFirstRender) {
+    if (typeof propsMap === 'function') {
+      const listener  = createListener(store.getState(), propsMap)
+      const handler   = createChangeHandler(ref, listener)
 
-    if (rootListeners.length) {
-      const handler = (newState) => {
-        const isChanged = rootListeners.some((handler) => handler(newState))
-
-        if (isChanged) {
-          renderConnectors[connectId]()
-        }
-      }
-
-      handlers.push({ key: 'root', handler })
+      ref.current.handlers.push({ key: 'root', handler })
       store.subscribe('root', handler)
     }
+    else {
+      const listeners = createListeners(store, propsMap)
 
-    Object.keys(reducerListeners).forEach((reducerName) => {
-      const handler = (newState) => {
-        const isChanged = reducerListeners[reducerName](newState)
+      Object.keys(listeners).forEach((reducerName) => {
+        const handler = createChangeHandler(ref, (newState) => listeners[reducerName].some((listener) => listener(newState)))
 
-        if (isChanged) {
-          renderConnectors[connectId]()
-        }
-      }
-
-      handlers.push({ key: reducerName, handler })
-      store.subscribe(reducerName, handler)
-    })
-
-    return () => {
-      delete renderConnectors[connectId]
-
-      handlers.forEach(({ key, handler }) => {
-        store.unsubscribe(key, handler)
+        ref.current.handlers.push({ key: reducerName, handler })
+        store.subscribe(reducerName, handler)
       })
     }
+  }
+
+  useEffect(() => () => {
+    ref.current.handlers.forEach(({ key, handler }) => {
+      store.unsubscribe(key, handler)
+    })
+
+    delete ref.current
   }, [])
 }
 
