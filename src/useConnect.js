@@ -12,13 +12,15 @@ const getIn = (obj, arrPath) => {
   return getIn(obj[key], restPath)
 }
 
+const strPathToArr = (str) => str.split('.').filter((v) => v)
+
 const lookup = (state, propMap) => {
   if (typeof propMap === 'function') {
     return propMap(state)
   }
 
   if (typeof propMap === 'string') {
-    return getIn(state, propMap.split('.'))
+    return getIn(state, strPathToArr(propMap))
   }
 
   throw new Error(`Unknown lookup value: ${propMap}`)
@@ -66,13 +68,20 @@ const createListeners = (store, propsMap) => {
       listeners.root.push(createListener(initialState, propMap))
     }
     else if (typeof propMap === 'string') {
-      const [ reducerName, ...path ] = propMap.split('.')
+      const [ reducerName, ...path ] = strPathToArr(propMap)
+      let listener
 
       if (!listeners[reducerName]) {
         listeners[reducerName] = []
       }
 
-      const listener = createListener(initialState[reducerName], path.join('.'))
+      if (path.length) {
+        listener = createListener(initialState[reducerName], path.join('.'))
+      }
+      // if useConnect({ products: 'products' })
+      else {
+        listener = createListener(initialState, reducerName)
+      }
 
       listeners[reducerName].push(listener)
     }
